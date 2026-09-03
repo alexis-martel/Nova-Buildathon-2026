@@ -25,5 +25,7 @@ def run_nback(
     Returns: accuracy
     """
     seq = nback.generate_n_back_seq(n, assets, length, num_items, percent_nback)
-    patient_picks = nback_ui.start_n_back_ui(seq, interval)
-    # ... WIP
+    pat_picks = nback_ui.start_n_back_ui(seq, interval, f"N-Back Test (N = {n})")
+    pos_picks = nback.get_positive_n_back_picks(n, seq)
+    score = nback.compute_score(pat_picks, pos_picks, length)
+    print(f"Patient accuracy is: {score}")

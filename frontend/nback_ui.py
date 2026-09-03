@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image, ImageTk
 
 
-def start_n_back_ui(seq: list[Path], interval: float) -> list[int]:
+def start_n_back_ui(seq: list[Path], interval: float, window_title: str) -> list[int]:
     """Run the n-back test UI and return the indices where "Match" was pressed.
 
     Args:
@@ -21,7 +21,7 @@ def start_n_back_ui(seq: list[Path], interval: float) -> list[int]:
     current_image = None  # kept alive so Tk doesn't garbage-collect it
 
     root = tk.Tk()
-    root.title("N-Back Test")
+    root.title(window_title)
     root.geometry("500x500")
 
     image_label = tk.Label(root)

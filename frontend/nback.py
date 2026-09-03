@@ -36,7 +36,7 @@ def get_positive_n_back_picks(n: int, seq: list[Path]) -> list[int]:
     return res
 
 
-def compute_scores(
+def compute_score(
     patient_picks: list[int], positive_picks: list[int], length: int
 ) -> float:
     """Returns a score (in %) that relates to the accuracy of the test."""
@@ -49,4 +49,4 @@ def compute_scores(
     for pat_pick in patient_picks:
         if pat_pick not in positive_picks:
             mistakes += 1
-    return (length - mistakes) / length
+    return ((length - mistakes) / length) * 100
