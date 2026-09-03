@@ -1,8 +1,8 @@
-import nback
-import nback_ui
+from frontend import nback
+from frontend import nback_ui
 from pathlib import Path
 
-ITEM_DIR = Path(__file__).parent / "assets"
+ITEM_DIR = Path("frontend/assets")
 NBACK_ITEMS = list(ITEM_DIR.iterdir())
 
 
