@@ -1,5 +1,6 @@
 from frontend import nback
 from frontend import nback_ui
+from frontend import welcome_ui
 from pathlib import Path
 
 ITEM_DIR = Path("frontend/assets")
@@ -28,4 +29,10 @@ def run_nback(
     pat_picks = nback_ui.start_n_back_ui(seq, interval, f"N-Back Test (N = {n})")
     pos_picks = nback.get_positive_n_back_picks(n, seq)
     score = nback.compute_score(pat_picks, pos_picks, length)
-    print(f"Patient accuracy is: {score}")
+    print(f"Patient accuracy is: {score}%")
+
+def initial_test():
+    """Write the necessary things for the first n-back test in the sequence here"""
+    run_nback(2, NBACK_ITEMS, 10, 3)
+if __name__ == "__main__":
+    welcome_ui.show_welcome_ui(initial_test)
