@@ -5,10 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
 from mne.preprocessing import ICA, corrmap, create_ecg_epochs
+from scipy.integrate import simpson
 
 # Just some constants
 freq_bands = {'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]}
-frontal_channels = ['Fp1', 'Fp2', 'F3', 'F4', 'F7', 'F8', 'Fz']
+frontal_channels = ['F3', 'F4', 'F7', 'F8', 'Fz']
 
 def load_nback_data(file_path):
     n_back_data = mne.io.read_raw_brainvision(file_path, preload=True)
@@ -145,6 +146,42 @@ def create_all_epochs(raw, drop_desc='dropped_sample', include_stop=True, concat
         epochs[condition], boundaries[condition] = create_nback_epochs(raw, condition, drop_desc, include_stop, concat)
     return epochs, boundaries
 
+def compute_theta_power(n_back_epochs): 
+    theta_power = {}
+    for condition, epoch_list in n_back_epochs.items():
+        if not epoch_list:
+            theta_power[condition] = np.nan
+            continue
+        F3_list = []
+        F4_list = []
+        F7_list = []
+        F8_list = []
+        Fz_list = []
+        for epoch in epoch_list:
+            # Compute the power spectral density (PSD) for each epoch
+            spectrum = epoch.compute_psd(fmin=0.5, fmax=30)
+            psd_data, freqs = spectrum.get_data(picks= frontal_channels, exclude='bads',
+            fmin= freq_bands['theta'][0], fmax=freq_bands['theta'][1], return_freqs=True)
+
+            # Average the PSDs across epochs and channels
+            freq_res = freqs[1] - freqs[0]
+            absolute_bandpower = simpson(psd_data, dx=freq_res, axis=-1)
+            # Integrate the PSD over the theta band to get total power
+            F3_list.append(absolute_bandpower[0])
+            F4_list.append(absolute_bandpower[1])
+            F7_list.append(absolute_bandpower[2])
+            F8_list.append(absolute_bandpower[3])
+            Fz_list.append(absolute_bandpower[4])
+
+        F3_mean = np.mean(F3_list)
+        F4_mean = np.mean(F4_list) 
+        F7_mean = np.mean(F7_list)
+        F8_mean = np.mean(F8_list)
+        Fz_mean = np.mean(Fz_list)
+        theta_power[condition] = {"F3": F3_mean, "F4": F4_mean, "F7": F7_mean, "F8": F8_mean, "Fz": Fz_mean}
+
+    return theta_power
+
 def n_back_data_test():
     n_back_data = load_nback_data(r"n_back_dataset\sub-001\eeg\sub-001_task-nback_eeg.vhdr")
     eeg_picks = mne.pick_types(n_back_data.info, eeg=True, meg=False, stim=False, eog=False) #only pick eeg channels
@@ -164,7 +201,8 @@ def n_back_data_test():
     # Get epoch of data between n-back annotations:
     n_back_epochs, n_back_boundaries = create_all_epochs(n_back_data_cropped, drop_desc='dropped_samples',
     include_stop=True, concat=False)
-
+    theta_power = compute_theta_power(n_back_epochs)
+    print(theta_power)
     input("Press Enter to close the plot and exit the script...")
 
 n_back_data_test()
