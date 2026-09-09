@@ -186,31 +186,31 @@ def compute_theta_power_test(n_back_epochs):
     return theta_power
 
 def compute_theta_power_improved(n_back_epochs, frontal_channels=frontal_channels, freq_bands=freq_bands):
-
+    #Compute theta power for every epoch and store them
+    # as n_back condition -> electrode -> list of powers for every epoch
     theta_power = {}
 
     for condition, epoch_list in n_back_epochs.items():
 
-        # Handle conditions with no valid epochs
-        if not epoch_list:
-
-            theta_power[condition] = {
-                channel: {"mean": np.nan, "std": np.nan, "values": []}
-                for channel in frontal_channels}
-
-            continue
-
-        # Create a list to store power values for every epoch
+        # Create a dictionary to store theta power from every epoch
+        # for each frontal electrode
         channel_power = {
             channel: []
-            for channel in frontal_channels}
+            for channel in frontal_channels
+        }
+
+        # Handle conditions with no valid epochs
+        if not epoch_list:
+            theta_power[condition] = channel_power
+            continue
 
         for epoch in epoch_list:
 
             # Compute PSD
             spectrum = epoch.compute_psd(
                 fmin=0.5,
-                fmax=30)
+                fmax=30
+            )
 
             # Extract theta-band PSD
             psd_data, freqs = spectrum.get_data(
@@ -218,33 +218,30 @@ def compute_theta_power_improved(n_back_epochs, frontal_channels=frontal_channel
                 exclude="bads",
                 fmin=freq_bands["theta"][0],
                 fmax=freq_bands["theta"][1],
-                return_freqs=True)
+                return_freqs=True
+            )
 
-            # Integrate PSD over frequency to obtain absolute power
+            # Integrate PSD over frequency to obtain absolute theta power
             absolute_bandpower = simpson(
                 psd_data,
                 x=freqs,
                 axis=-1)
 
-            # Store each electrode's power for this epoch
+            # Store theta power for each electrode
             for channel, power in zip(
                 frontal_channels,
                 absolute_bandpower
             ):
                 channel_power[channel].append(power)
 
-        # Store mean, standard deviation, and all epoch values
-        theta_power[condition] = {
-            channel: {
-                "mean": np.mean(values),
-                "std": np.std(values, ddof=1),
-                "values": values} for channel, values in channel_power.items()}
+        # Store all epoch values for each electrode
+        theta_power[condition] = channel_power
 
     return theta_power
 
 def combine_theta_power(theta_power_dicts):
-    # Combine the theta power dict into a single df 
-    # The resulting df has columns: Sample, Condition, Electrode, Mean_Theta_Power, Std_Theta_Power, Epoch_Power_Values
+    # Combine theta power dictionaries into a long-form DataFrame.
+    # Each row corresponds to one sample, condition, electrode, and epoch.
 
     rows = []
 
@@ -253,16 +250,17 @@ def combine_theta_power(theta_power_dicts):
 
         for condition, electrodes in theta_power.items():
 
-            for electrode, metrics in electrodes.items():
+            for electrode, epoch_values in electrodes.items():
 
-                rows.append({
-                    "Sample": sample_number,
-                    "Condition": condition,
-                    "Electrode": electrode,
-                    "Mean_Theta_Power": metrics["mean"],
-                    "Std_Theta_Power": metrics["std"],
-                    "Epoch_Power_Values": metrics["values"]
-                })
+                for epoch_number, theta_power_value in enumerate(epoch_values, start=1):
+
+                    rows.append({
+                        "Sample": sample_number,
+                        "Condition": condition,
+                        "Electrode": electrode,
+                        "Epoch": epoch_number,
+                        "Theta_Power": theta_power_value
+                    })
 
     df = pd.DataFrame(rows)
 
@@ -297,7 +295,7 @@ def n_back_data_test():
     input("Press Enter to close the plot and exit the script...")
 
 
-def n_back_get_features():
+def n_back_get_all_theta_powers():
     n_back_paths = pd.read_csv(r"n_back_dataset\n_back_data_paths.csv")
 
     theta_power_list = []
@@ -328,4 +326,5 @@ def n_back_get_features():
         theta_power_list.append(theta_power)
 
     df = combine_theta_power(theta_power_list)
-    df.to_csv(r"n_back_theta_power_features.csv", index=False)
+    df.to_csv(r"n_back_theta_powers.csv", index=False)
+n_back_get_all_theta_powers()
