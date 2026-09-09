@@ -4,11 +4,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import sklearn
 from mne.preprocessing import ICA, corrmap, create_ecg_epochs
 from scipy.integrate import simpson
 import seaborn as sns
-from pathlib import Path
 
 # Just some constants
 freq_bands = {'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]}
@@ -296,7 +294,7 @@ def n_back_data_test():
 
 
 def n_back_get_all_theta_powers():
-    n_back_paths = pd.read_csv(r"n_back_dataset\n_back_data_paths.csv")
+    n_back_paths = pd.read_csv(Path("n_back_dataset\n_back_data_paths.csv"))
 
     theta_power_list = []
     for row in n_back_paths.itertuples(index=False):
@@ -326,5 +324,4 @@ def n_back_get_all_theta_powers():
         theta_power_list.append(theta_power)
 
     df = combine_theta_power(theta_power_list)
-    df.to_csv(r"n_back_theta_powers.csv", index=False)
-n_back_get_all_theta_powers()
+    df.to_csv(r"n_back_theta_power_features.csv", index=False)
