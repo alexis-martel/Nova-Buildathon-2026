@@ -1,5 +1,6 @@
 # Extracting spectral features from the filtered EEG data
 import mne
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -268,7 +269,7 @@ def combine_theta_power(theta_power_dicts):
     return df
 
 def n_back_data_test():
-    n_back_data = load_nback_data(r"n_back_dataset\sub-001\eeg\sub-001_task-nback_eeg.vhdr")
+    n_back_data = load_nback_data(Path("dataset/n_back_dataset/sub-001/eeg/sub-001_task-nback_eeg.vhdr"))
     eeg_picks = mne.pick_types(n_back_data.info, eeg=True, meg=False, stim=False, eog=False) #only pick eeg channels
 
     #Preprocess data
@@ -278,7 +279,7 @@ def n_back_data_test():
     
     # Combine or choose which candidates to exclude (inspect them)
     # Load the events and attach them as annotations to the raw data
-    attach_annotations_from_tsv(n_back_filtered, r"n_back_dataset\sub-001\eeg\sub-001_task-nback_events.tsv")
+    attach_annotations_from_tsv(n_back_filtered, Path("dataset/n_back_dataset/sub-001/eeg/sub-001_task-nback_events.tsv"))
 
     #Crop the data based on the start and end events
     n_back_data_cropped = crop_data(n_back_filtered, start_annotation= 'started_n_back', stop_annotation= 'finished_n_back')

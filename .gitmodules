@@ -1,0 +1,3 @@
+[submodule "dataset/n_back_dataset"]
+	path = dataset/n_back_dataset
+	url = https://github.com/OpenNeuroDatasets/ds007169.git
