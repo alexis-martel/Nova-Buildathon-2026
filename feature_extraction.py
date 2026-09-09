@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import sklearn
 from mne.preprocessing import ICA, corrmap, create_ecg_epochs
 from scipy.integrate import simpson
+import seaborn as sns
+from pathlib import Path
 
 # Just some constants
 freq_bands = {'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]}
@@ -147,7 +149,7 @@ def create_all_epochs(raw, drop_desc='dropped_sample', include_stop=True, concat
         epochs[condition], boundaries[condition] = create_nback_epochs(raw, condition, drop_desc, include_stop, concat)
     return epochs, boundaries
 
-def compute_theta_power(n_back_epochs): 
+def compute_theta_power_test(n_back_epochs): 
     theta_power = {}
     for condition, epoch_list in n_back_epochs.items():
         if not epoch_list:
@@ -183,6 +185,89 @@ def compute_theta_power(n_back_epochs):
 
     return theta_power
 
+def compute_theta_power_improved(n_back_epochs, frontal_channels=frontal_channels, freq_bands=freq_bands):
+
+    theta_power = {}
+
+    for condition, epoch_list in n_back_epochs.items():
+
+        # Handle conditions with no valid epochs
+        if not epoch_list:
+
+            theta_power[condition] = {
+                channel: {"mean": np.nan, "std": np.nan, "values": []}
+                for channel in frontal_channels}
+
+            continue
+
+        # Create a list to store power values for every epoch
+        channel_power = {
+            channel: []
+            for channel in frontal_channels}
+
+        for epoch in epoch_list:
+
+            # Compute PSD
+            spectrum = epoch.compute_psd(
+                fmin=0.5,
+                fmax=30)
+
+            # Extract theta-band PSD
+            psd_data, freqs = spectrum.get_data(
+                picks=frontal_channels,
+                exclude="bads",
+                fmin=freq_bands["theta"][0],
+                fmax=freq_bands["theta"][1],
+                return_freqs=True)
+
+            # Integrate PSD over frequency to obtain absolute power
+            absolute_bandpower = simpson(
+                psd_data,
+                x=freqs,
+                axis=-1)
+
+            # Store each electrode's power for this epoch
+            for channel, power in zip(
+                frontal_channels,
+                absolute_bandpower
+            ):
+                channel_power[channel].append(power)
+
+        # Store mean, standard deviation, and all epoch values
+        theta_power[condition] = {
+            channel: {
+                "mean": np.mean(values),
+                "std": np.std(values, ddof=1),
+                "values": values} for channel, values in channel_power.items()}
+
+    return theta_power
+
+def combine_theta_power(theta_power_dicts):
+    # Combine the theta power dict into a single df 
+    # The resulting df has columns: Sample, Condition, Electrode, Mean_Theta_Power, Std_Theta_Power, Epoch_Power_Values
+
+    rows = []
+
+    # enumerate starts sample numbering at 1
+    for sample_number, theta_power in enumerate(theta_power_dicts, start=1):
+
+        for condition, electrodes in theta_power.items():
+
+            for electrode, metrics in electrodes.items():
+
+                rows.append({
+                    "Sample": sample_number,
+                    "Condition": condition,
+                    "Electrode": electrode,
+                    "Mean_Theta_Power": metrics["mean"],
+                    "Std_Theta_Power": metrics["std"],
+                    "Epoch_Power_Values": metrics["values"]
+                })
+
+    df = pd.DataFrame(rows)
+
+    return df
+
 def n_back_data_test():
     n_back_data = load_nback_data(Path("dataset/n_back_dataset/sub-001/eeg/sub-001_task-nback_eeg.vhdr"))
     eeg_picks = mne.pick_types(n_back_data.info, eeg=True, meg=False, stim=False, eog=False) #only pick eeg channels
@@ -202,8 +287,45 @@ def n_back_data_test():
     # Get epoch of data between n-back annotations:
     n_back_epochs, n_back_boundaries = create_all_epochs(n_back_data_cropped, drop_desc='dropped_samples',
     include_stop=True, concat=False)
-    theta_power = compute_theta_power(n_back_epochs)
-    print(theta_power)
+    theta_power = compute_theta_power_improved(n_back_epochs)
+    df =combine_theta_power([theta_power])
+    sns.scatterplot(data=df, x='Condition', y='Mean_Theta_Power', hue='Electrode', style='Electrode', s=100)
+    plt.xlabel('Condition')
+    plt.ylabel('Mean Theta Power')
+    plt.title('Theta Power by Condition')
+    plt.show()
     input("Press Enter to close the plot and exit the script...")
 
-n_back_data_test()
+
+def n_back_get_features():
+    n_back_paths = pd.read_csv(r"n_back_dataset\n_back_data_paths.csv")
+
+    theta_power_list = []
+    for row in n_back_paths.itertuples(index=False):
+        sample = row.sample
+        vhdr_path = Path(row.vhdr_path)
+        events_path = Path(row.tsv_path)
+
+        n_back_data = load_nback_data(vhdr_path)
+        eeg_picks = mne.pick_types(n_back_data.info, eeg=True, meg=False, stim=False, eog=False) #only pick eeg channels
+
+        #Preprocess data
+        #Filter
+        n_back_filtered = n_back_data.copy().notch_filter(np.arange(50, n_back_data.info['sfreq'] / 2, 50))
+        n_back_filtered.filter(l_freq=0.5, h_freq=40)
+        
+        # Combine or choose which candidates to exclude (inspect them)
+        # Load the events and attach them as annotations to the raw data
+        attach_annotations_from_tsv(n_back_filtered, events_path)
+
+        #Crop the data based on the start and end events
+        n_back_data_cropped = crop_data(n_back_filtered, start_annotation= 'started_n_back', stop_annotation= 'finished_n_back')
+        
+        # Get epoch of data between n-back annotations:
+        n_back_epochs, n_back_boundaries = create_all_epochs(n_back_data_cropped, drop_desc='dropped_samples',
+        include_stop=True, concat=False)
+        theta_power = compute_theta_power_improved(n_back_epochs)
+        theta_power_list.append(theta_power)
+
+    df = combine_theta_power(theta_power_list)
+    df.to_csv(r"n_back_theta_power_features.csv", index=False)
