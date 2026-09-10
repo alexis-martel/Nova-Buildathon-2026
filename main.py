@@ -41,9 +41,16 @@ def dummy_compute(data):
 
 def test_loop():
     """Runs when the start button is pressed in the welcome UI. Controls when to advance to the next level & when to stop"""
+    THRESHOLD_PASS_ACC = 0.5
+    THRESHOLD_PASS_EFF = 0.7 # Effort score above which is considered "very high effort"
+    running = True
     # Initial test
-    scores = run_nback(1, NBACK_ITEMS, 10, 3)
-    print(f"acc: {scores[0]}\teff: {scores[1]}")
+    while running:
+        scores = run_nback(1, NBACK_ITEMS, 10, 3)
+        print(f"acc: {scores[0]}\teff: {scores[1]}")
+        if scores[1] > THRESHOLD_PASS_EFF:
+            running = False
+    # TODO: show end screen with stats
 
 if __name__ == "__main__":
     welcome_ui.show_welcome_ui(test_loop)
