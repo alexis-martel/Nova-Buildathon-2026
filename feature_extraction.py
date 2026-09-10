@@ -205,7 +205,7 @@ def compute_theta_power_improved(n_back_epochs, frontal_channels=frontal_channel
         for epoch in epoch_list:
 
             # Compute PSD
-            spectrum = epoch.compute_psd(
+            spectrum = epoch.compute_psd(method = 'multitaper',
                 fmin=0.5,
                 fmax=30
             )
@@ -294,7 +294,7 @@ def n_back_data_test():
 
 
 def n_back_get_all_theta_powers():
-    n_back_paths = pd.read_csv(Path("n_back_dataset\n_back_data_paths.csv"))
+    n_back_paths = pd.read_csv(r"n_back_dataset\n_back_data_paths.csv")
 
     theta_power_list = []
     for row in n_back_paths.itertuples(index=False):
@@ -324,4 +324,57 @@ def n_back_get_all_theta_powers():
         theta_power_list.append(theta_power)
 
     df = combine_theta_power(theta_power_list)
-    df.to_csv(r"n_back_theta_power_features.csv", index=False)
+    df.to_csv(r"n_back_theta_power_multitaper.csv", index=False)
+
+
+def summarize_theta_power():
+    """
+    Calculate mean, median, and 75th percentile of theta power
+    across epochs for each Sample, Condition, and Electrode.
+
+    Also calculates the mean across electrodes for each of the
+    three summary statistics.
+
+    """
+    df = pd.read_csv(r'n_back_theta_power_multitaper.csv')
+    # Calculate statistics across epochs for each electrode
+    electrode_stats = (
+        df.groupby(["Sample", "Condition", "Electrode"])["Theta_Power"]
+        .agg(
+            Mean="mean",
+            Median="median",
+            Q75=lambda x: x.quantile(0.75)
+        )
+        .reset_index()
+    )
+
+    # Convert electrodes into columns
+    electrode_stats = electrode_stats.pivot(
+        index=["Sample", "Condition"],
+        columns="Electrode",
+        values=["Mean", "Median", "Q75"]
+    )
+
+    # Flatten column names
+    electrode_stats.columns = [
+        f"{electrode}_{stat}"
+        for stat, electrode in electrode_stats.columns
+    ]
+
+    electrode_stats = electrode_stats.reset_index()
+
+    # Find electrodes present in the data
+    electrodes = df["Electrode"].unique()
+
+    # Calculate mean across electrodes for each statistic
+    for stat in ["Mean", "Median", "Q75"]:
+        electrode_columns = [
+            f"{electrode}_{stat}"
+            for electrode in electrodes
+            if f"{electrode}_{stat}" in electrode_stats.columns
+        ]
+
+        electrode_stats[f"Frontal_{stat}"] = (
+            electrode_stats[electrode_columns].mean(axis=1)
+        )
+    electrode_stats.to_csv(r'n_back_theta_multitaper_summary.csv')
