@@ -91,6 +91,7 @@ ptyprocess==0.7.0
 pure_eval==0.2.3
 pycparser==3.0
 Pygments==2.21.0
+pylsl==1.18.2
 pyparsing==3.3.2
 PyQt6==6.11.0
 PyQt6-Qt6==6.11.2
