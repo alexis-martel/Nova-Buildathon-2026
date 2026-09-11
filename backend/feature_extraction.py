@@ -378,3 +378,176 @@ def summarize_theta_power():
             electrode_stats[electrode_columns].mean(axis=1)
         )
     electrode_stats.to_csv(r'n_back_theta_multitaper_summary.csv')
+
+
+    """
+    Calculate mean theta power across epochs for each
+    Sample, Condition, and Electrode.
+
+    Then calculate theta power relative to the 1-back
+    baseline for the same Sample and Electrode.
+
+    Also calculates the mean relative theta power across
+    electrodes.
+    """
+
+    df = pd.read_csv(r'n_back_theta_powers_welch.csv')
+
+    # --------------------------------------------------
+    # 1. Calculate mean theta power across epochs
+    # --------------------------------------------------
+
+    electrode_stats = (
+        df.groupby(["Sample", "Condition", "Electrode"])["Theta_Power"]
+        .mean()
+        .reset_index()
+    )
+
+    electrode_stats = electrode_stats.rename(
+        columns={"Theta_Power": "Theta_Power_Mean"}
+    )
+
+    # --------------------------------------------------
+    # 2. Extract 1-back baseline for each Sample/Electrode
+    # --------------------------------------------------
+
+    baseline = (
+        electrode_stats[electrode_stats["Condition"] == "1-back"]
+        [["Sample", "Electrode", "Theta_Power_Mean"]]
+        .rename(columns={"Theta_Power_Mean": "Baseline_1back"})
+    )
+
+    # --------------------------------------------------
+    # 3. Add baseline to each condition
+    # --------------------------------------------------
+
+    electrode_stats = electrode_stats.merge(
+        baseline,
+        on=["Sample", "Electrode"],
+        how="left"
+    )
+
+    # --------------------------------------------------
+    # 4. Calculate relative theta power
+    # --------------------------------------------------
+
+    electrode_stats["Relative_Theta_Power"] = (
+        electrode_stats["Theta_Power_Mean"]
+        / electrode_stats["Baseline_1back"]
+    )
+
+    # --------------------------------------------------
+    # 5. Convert electrodes into columns
+    # --------------------------------------------------
+
+    relative_stats = electrode_stats.pivot(
+        index=["Sample", "Condition"],
+        columns="Electrode",
+        values="Relative_Theta_Power"
+    )
+
+    # Flatten column names
+    relative_stats.columns = [
+        f"{electrode}_Relative"
+        for electrode in relative_stats.columns
+    ]
+
+    relative_stats = relative_stats.reset_index()
+
+    # --------------------------------------------------
+    # 6. Calculate mean across electrodes
+    # --------------------------------------------------
+
+    electrodes = df["Electrode"].unique()
+
+    electrode_columns = [
+        f"{electrode}_Mean_Relative"
+        for electrode in electrodes
+        if f"{electrode}_Mean_Relative" in relative_stats.columns
+    ]
+
+    relative_stats["Frontal_Mean_Relative"] = (
+        relative_stats[electrode_columns].mean(axis=1)
+    )
+
+    # --------------------------------------------------
+    # 7. Save
+    # --------------------------------------------------
+
+    relative_stats.to_csv(
+        r'n_back_theta_welch_relative_summary.csv',
+        index=False)
+
+def summarize_relative_theta_power():
+    """
+    Calculate mean theta power across epochs for each
+    Sample, Condition, and Electrode.
+
+    Then calculate theta power relative to the 1-back
+    baseline for the same Sample and Electrode.
+
+    Finally, calculate the mean relative theta power
+    across F3, F4, F7, F8, and Fz.
+    """
+
+    df = pd.read_csv(r'n_back_theta_powers_welch.csv')
+
+    # 1. Average theta power across epochs
+    electrode_stats = (
+        df.groupby(
+            ["Sample", "Condition", "Electrode"]
+        )["Theta_Power"]
+        .mean()
+        .reset_index()
+    )
+
+    electrode_stats = electrode_stats.rename(
+        columns={"Theta_Power": "Theta_Power_Mean"}
+    )
+
+    # 2. Get the 1-back baseline for each Sample/Electrode
+    baseline = (
+        electrode_stats[
+            electrode_stats["Condition"] == "1-back"
+        ][["Sample", "Electrode", "Theta_Power_Mean"]]
+        .rename(
+            columns={"Theta_Power_Mean": "Baseline_1back"}
+        )
+    )
+
+    # 3. Add the appropriate baseline to each condition
+    electrode_stats = electrode_stats.merge(
+        baseline,
+        on=["Sample", "Electrode"],
+        how="left"
+    )
+
+    # 4. Calculate relative theta power
+    electrode_stats["Relative_Theta_Power"] = (
+        electrode_stats["Theta_Power_Mean"]
+        / electrode_stats["Baseline_1back"]
+    )
+
+    # 5. Convert electrodes into columns
+    relative_stats = electrode_stats.pivot(
+        index=["Sample", "Condition"],
+        columns="Electrode",
+        values="Relative_Theta_Power"
+    ).reset_index()
+
+    relative_stats.columns.name = None
+
+    # 6. Calculate frontal mean
+    frontal_electrodes = ["F3", "F4", "F7", "F8", "Fz"]
+
+    relative_stats["Frontal_Mean_Relative"] = (
+        relative_stats[frontal_electrodes].mean(axis=1)
+    )
+
+    # 7. Save
+    relative_stats.to_csv(
+        r'n_back_theta_welch_relative_summary.csv',
+        index=False
+    )
+
+    return relative_stats
