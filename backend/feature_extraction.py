@@ -492,7 +492,7 @@ def summarize_relative_theta_power():
 
     df = pd.read_csv(r'n_back_theta_powers_welch.csv')
 
-    # 1. Average theta power across epochs
+    # Average theta power across epochs
     electrode_stats = (
         df.groupby(
             ["Sample", "Condition", "Electrode"]
@@ -505,7 +505,7 @@ def summarize_relative_theta_power():
         columns={"Theta_Power": "Theta_Power_Mean"}
     )
 
-    # 2. Get the 1-back baseline for each Sample/Electrode
+    # Get the 1-back baseline for each Sample/Electrode
     baseline = (
         electrode_stats[
             electrode_stats["Condition"] == "1-back"
@@ -515,20 +515,20 @@ def summarize_relative_theta_power():
         )
     )
 
-    # 3. Add the appropriate baseline to each condition
+    # Add the appropriate baseline to each condition
     electrode_stats = electrode_stats.merge(
         baseline,
         on=["Sample", "Electrode"],
         how="left"
     )
 
-    # 4. Calculate relative theta power
+    # Calculate relative theta power
     electrode_stats["Relative_Theta_Power"] = (
         electrode_stats["Theta_Power_Mean"]
         / electrode_stats["Baseline_1back"]
     )
 
-    # 5. Convert electrodes into columns
+    # Convert electrodes into columns
     relative_stats = electrode_stats.pivot(
         index=["Sample", "Condition"],
         columns="Electrode",
@@ -537,14 +537,14 @@ def summarize_relative_theta_power():
 
     relative_stats.columns.name = None
 
-    # 6. Calculate frontal mean
+    # Calculate frontal mean
     frontal_electrodes = ["F3", "F4", "F7", "F8", "Fz"]
 
     relative_stats["Frontal_Mean_Relative"] = (
         relative_stats[frontal_electrodes].mean(axis=1)
     )
 
-    # 7. Save
+    # Save
     relative_stats.to_csv(
         r'n_back_theta_welch_relative_summary.csv',
         index=False
@@ -555,13 +555,15 @@ def summarize_relative_theta_power():
 
 def get_baseline(baseline_array, frontal_channels, freq_bands):
     '''
-    Get a baseline theta power for all the frontal electrodes
+    Get a baseline theta power for all the frontal electrodes.
+    Function is equivalent to computing absolute theta power for
+    a condition
     '''
     # Filter
     baseline_array_filtered = baseline_array.copy()
 
     baseline_array_filtered.notch_filter(
-        np.arange(50, baseline_array_filtered.info["sfreq"] / 2, 50))
+        np.arange(60, baseline_array_filtered.info["sfreq"] / 2, 50))
 
     baseline_array_filtered.filter(l_freq=0.5, h_freq=30)
 
@@ -619,11 +621,22 @@ def get_baseline(baseline_array, frontal_channels, freq_bands):
 
     return channel_mean
 
-def get_relative_theta_power(raw_array, baseline):
+def get_relative_theta_power(raw_array, baseline, frontal_channels, freq_bands):
+    '''
+    Compute relative theta power for frontal channels
+    '''
     theta_powers = get_baseline(raw_array, frontal_channels, freq_bands)
+    #The Unicorn only has
+    Fz_power = theta_powers['Fz']
     relative_theta = {}
     for electrode, theta_power in theta_powers.items():
         relative_theta[electrode] = theta_power / baseline[electrode]
         
     return relative_theta_power
 
+def predict_CW(relative_theta_power):
+    loaded_model = joblib.load(Path('unicorn_Fz_logit_model.joblib'))
+
+    prediction = loaded_model.predict(relative_theta_power)
+
+    return prediction

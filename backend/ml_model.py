@@ -327,7 +327,7 @@ def best_logistic_regression_model():
 
     # Keep only the variables we need
     df = df[
-        ["Sample", "Condition", "Frontal_Mean_Relative"]
+        ["Sample", "Condition", "Fz"]
     ].copy()
 
     # Keep only 1-back and 4-back
@@ -343,16 +343,15 @@ def best_logistic_regression_model():
 
     # Define feature, target, and participant groups
     feature_data = data[
-        ["Sample", "Workload", "Frontal_Mean_Relative"]
+        ["Sample", "Workload", "Fz"]
     ].dropna()
 
-    X = feature_data[["Frontal_Mean_Relative"]]
+    X = feature_data[["Fz"]]
     y = feature_data["Workload"]
     groups = feature_data["Sample"]
 
     # Leave one sample out cross-validation
     #  tests your model on an unseen sample
-    #
     logo = LeaveOneGroupOut()
 
     y_true = []
@@ -391,7 +390,7 @@ def best_logistic_regression_model():
     plt.plot(
         fpr,
         tpr,
-        label=f"Frontal Mean Relative Theta (AUC = {auc:.2f})"
+        label=f"Fz Relative Theta (AUC = {auc:.2f})"
     )
 
     plt.plot(
@@ -406,15 +405,13 @@ def best_logistic_regression_model():
     plt.title("ROC Curve: 1-back vs 4-back")
     plt.legend()
     plt.grid(True)
-    #plt.savefig('n_back_roc_auc_curve.svg', dpi=600, format='svg', transparent=True)
+    plt.savefig('n_back_Fc_roc_auc_curve.svg', dpi=600, format='svg', transparent=True)
 
     # Train the final model on all the samples (no test portion)
     final_model = LogisticRegression()
     final_model.fit(X, y)
 
     # Save the model 
-    #joblib.dump(final_model, "best_frontal_theta_logistic_model.joblib")
+    joblib.dump(final_model, "unicorn_Fz_logit_model.joblib")
 
     return auc
-
-best_logistic_regression_model()
