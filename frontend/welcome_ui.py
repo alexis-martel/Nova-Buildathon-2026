@@ -9,3 +9,4 @@ def show_welcome_ui(on_click):
     tk.Label(root, text="welcome to the awesome n-back test with eeg").pack()
     tk.Button(root, text="let's go", command=lambda: (root.destroy(), on_click())).pack(side=tk.BOTTOM, pady=20)
     root.mainloop()
+

@@ -7,7 +7,7 @@ def generate_n_back_seq(
     assets: list[Path],
     length: int,
     num_items: int | None = None,
-    percent_nback: float = 27,
+    percent_nback: float = 90,
 ) -> list[Path]:
     """Generate a `n`-Back test of `num_items` in `assets`. If `num_items` is `None`, all items of `assets`  will be used.  The test sequence will be `length` questions long. A positive n-back will be enforced randomly on `percent_nback`% of items."""
     seq = []
@@ -23,7 +23,6 @@ def generate_n_back_seq(
     for i in range(choose_n):
         i = random.randint(0, len(assets) - n - 1)
         assets[i + n] = assets[i]
-
     return seq
 
 
@@ -41,6 +40,7 @@ def compute_score(
 ) -> float:
     """Returns a score (in %) that relates to the accuracy of the test."""
     mistakes = 0
+    hits = 0
     # Check for any missing correct answers
     for pos_pick in positive_picks:
         if pos_pick not in patient_picks:
@@ -49,4 +49,14 @@ def compute_score(
     for pat_pick in patient_picks:
         if pat_pick not in positive_picks:
             mistakes += 1
-    return ((length - mistakes) / length) * 100
+    # Calculate patient hits
+    for pat_pick in list(set(patient_picks)):
+        if pat_pick in positive_picks:
+            hits += 1
+    try:
+        score = (hits) / (hits + mistakes)
+    except ZeroDivisionError:
+        if len(list(set(positive_picks))) == 0:
+            score = 1.0
+        else: score = 0.0
+    return score

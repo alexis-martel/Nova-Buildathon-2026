@@ -2,10 +2,13 @@ from pathlib import Path
 
 from backend import feature_extraction
 from backend.lsl_recorder import EEGRecorder
-from frontend import nback, nback_ui, welcome_ui
+from frontend import nback, nback_ui, welcome_ui, graph_ui
 
 ITEM_DIR = Path("frontend/assets")
 NBACK_ITEMS = list(ITEM_DIR.iterdir())
+
+def bold(string):
+    return f"\033[1m{string}\033[0m"
 
 
 def run_nback(
@@ -47,27 +50,31 @@ def test_loop():
     running = True
     n = 1
     # Initial test (baseline n=1)
-    acc_score, baseline_eeg = run_nback(n, NBACK_ITEMS, 10, 0.5)
+    acc_score, baseline_eeg = run_nback(n, NBACK_ITEMS, 20, .1)
     scores.append({"accuracy": acc_score, "high_effort": None})
     baseline=feature_extraction.get_baseline(baseline_eeg, frontal_channels =["Fz"], freq_bands={'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]})
     # Game loop
+    n = 2
     for i in range(5):
-        n += 1
-        acc_score, eeg_data = run_nback(n, NBACK_ITEMS, 30, 0.5)
+        acc_score, eeg_data = run_nback(n, NBACK_ITEMS, 20, .1)
         high_effort = compute(eeg_data, baseline)
         scores.append({"accuracy": acc_score, "high_effort": high_effort})
-        print(f"Patient test score: {acc_score}\tHigher effort than baseline: {high_effort}")
+        print(bold(f"Patient test score: {acc_score}\tHigher effort than baseline: {high_effort}"))
         # Level-change logic
         high_score = acc_score >= THRESHOLD_PASS_ACC 
         if high_score and not high_effort:
             n += 1
-            print("Moving to higher level test")
+            print(bold("Moving to higher level test"))
         elif not high_score and high_effort:
             if n > 1: n -= 1
             else: pass
-            print("Moving to lower level test")
-        elif (high_score and high_effort) or (not high_score and not high_effort):
-            print("Retrying current level")
+            print(bold("Moving to lower level test"))
+        elif high_score and high_effort:
+            n += 1
+            print(bold("Moving to higher level test"))
+        elif not high_score and not high_effort:
+            print(bold("Retrying current level"))
+    graph_ui.show_graph_window(scores)
 
 if __name__ == "__main__":
     welcome_ui.show_welcome_ui(test_loop)
