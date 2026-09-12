@@ -573,7 +573,7 @@ def get_baseline(baseline_array, frontal_channels, freq_bands):
         duration=2.0
     )
 
-    epochs = mne.Epochs(baseline_array_filtered,events=events,
+    epochs = mne.Epochs(baseline_array_filtered,events=events, baseline=None,
         tmin=0.0,
         tmax=2.0 - 1 / baseline_array_filtered.info["sfreq"],
         preload=True
