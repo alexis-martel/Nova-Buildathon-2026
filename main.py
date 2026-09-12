@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from backend import feature_extraction
 from backend.lsl_recorder import EEGRecorder
 from frontend import nback, nback_ui, welcome_ui
 
@@ -30,27 +31,43 @@ def run_nback(
     recorder.start_collection()
     pat_picks = nback_ui.start_n_back_ui(seq, interval, f"N-Back Test (N = {n})")
     eeg_data = recorder.stop_collection()
-    effort_score = dummy_compute(eeg_data)
     pos_picks = nback.get_positive_n_back_picks(n, seq)
     accuracy_score = nback.compute_score(pat_picks, pos_picks, length)
-    return (accuracy_score, effort_score)
+    return (accuracy_score, eeg_data)
 
-def dummy_compute(data):
-    print(data)
-    return 3.14159265
+def compute(data, baseline):
+    rel_theta_power = feature_extraction.get_relative_theta_power(data, baseline, frontal_channels =["Fz"], freq_bands={'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]})
+    feature_extraction.predict_cw(rel_theta_power)
+    return True
 
 def test_loop():
     """Runs when the start button is pressed in the welcome UI. Controls when to advance to the next level & when to stop"""
-    THRESHOLD_PASS_ACC = 0.5
-    THRESHOLD_PASS_EFF = 0.7 # Effort score above which is considered "very high effort"
+    THRESHOLD_PASS_ACC = 0.6
+    scores = []
     running = True
-    # Initial test
-    while running:
-        scores = run_nback(1, NBACK_ITEMS, 10, 3)
-        print(f"acc: {scores[0]}\teff: {scores[1]}")
-        if scores[1] > THRESHOLD_PASS_EFF:
-            running = False
-    # TODO: show end screen with stats
+    n = 1
+    # Initial test (baseline n=1)
+    acc_score, baseline_eeg = run_nback(n, NBACK_ITEMS, 10, 0.5)
+    scores.append({"accuracy": acc_score, "high_effort": None})
+    baseline=feature_extraction.get_baseline(baseline_eeg, frontal_channels =["Fz"], freq_bands={'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]})
+    # Game loop
+    for i in range(5):
+        n += 1
+        acc_score, eeg_data = run_nback(n, NBACK_ITEMS, 30, 0.5)
+        high_effort = compute(eeg_data, baseline)
+        scores.append({"accuracy": acc_score, "high_effort": high_effort})
+        print(f"Patient test score: {acc_score}\tHigher effort than baseline: {high_effort}")
+        # Level-change logic
+        high_score = acc_score >= THRESHOLD_PASS_ACC 
+        if high_score and not high_effort:
+            n += 1
+            print("Moving to higher level test")
+        elif not high_score and high_effort:
+            if n > 1: n -= 1
+            else: pass
+            print("Moving to lower level test")
+        elif (high_score and high_effort) or (not high_score and not high_effort):
+            print("Retrying current level")
 
 if __name__ == "__main__":
     welcome_ui.show_welcome_ui(test_loop)
