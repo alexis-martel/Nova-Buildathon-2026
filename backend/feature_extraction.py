@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from mne.preprocessing import ICA, corrmap, create_ecg_epochs
 from scipy.integrate import simpson
 import seaborn as sns
+import joblib
 
 # Just some constants
 freq_bands = {'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]}
