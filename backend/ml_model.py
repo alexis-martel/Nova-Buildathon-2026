@@ -17,6 +17,7 @@ from sklearn.metrics import (mean_squared_error, mean_absolute_error, r2_score, 
     f1_score,
     roc_auc_score, roc_curve)
 from sklearn.model_selection import LeaveOneGroupOut
+import joblib
 
 def run_regression_models():
     """
@@ -211,6 +212,115 @@ def run_logistic_regression_models():
     return pd.DataFrame(results)
 
 
+def run_multiclass_logistic_regression():
+    """
+    Run multiclass logistic regression separately for each EEG feature.
+
+    Conditions are encoded as:
+        1-back -> 0
+        2-back -> 1
+        3-back -> 2
+        4-back -> 3
+
+    Leave-One-Participant-Out cross-validation is used so that
+    data from the same participant is never present in both
+    the training and testing sets.
+
+    Returns a DataFrame containing classification scores
+    for each feature.
+    """
+    df = pd.read_csv(r'n_back_theta_welch_relative_summary.csv')
+
+    features = [
+        "F3",
+        "F4",
+        "F7",
+        "F8",
+        "Fz",
+        "Frontal_Mean_Relative"
+    ]
+
+    # Encode the N-back conditions
+    data = df.copy()
+
+    data["Workload"] = data["Condition"].map({
+        "1-back": 0,
+        "2-back": 1,
+        "3-back": 2,
+        "4-back": 3
+    })
+
+    # Remove any conditions that were not recognised
+    data = data.dropna(subset=["Workload"])
+
+    logo = LeaveOneGroupOut()
+
+    results = []
+
+    for feature in features:
+
+        # Remove rows where this feature is missing
+        feature_data = data[
+            ["Sample", "Workload", feature]
+        ].dropna()
+
+        X = feature_data[[feature]]
+        y = feature_data["Workload"]
+        groups = feature_data["Sample"]
+
+        y_true = []
+        y_pred = []
+
+        # Leave one participant out at a time
+        for train_idx, test_idx in logo.split(X, y, groups):
+
+            X_train = X.iloc[train_idx]
+            X_test = X.iloc[test_idx]
+
+            y_train = y.iloc[train_idx]
+            y_test = y.iloc[test_idx]
+
+            model = LogisticRegression(
+                max_iter=1000
+            )
+
+            model.fit(X_train, y_train)
+
+            predictions = model.predict(X_test)
+
+            y_true.extend(y_test)
+            y_pred.extend(predictions)
+
+        # Calculate classification scores
+        results.append({
+            "Feature": feature,
+            "Accuracy": accuracy_score(y_true, y_pred),
+            "Balanced_Accuracy": balanced_accuracy_score(
+                y_true,
+                y_pred
+            ),
+            "Precision_Macro": precision_score(
+                y_true,
+                y_pred,
+                average="macro",
+                zero_division=0
+            ),
+            "Recall_Macro": recall_score(
+                y_true,
+                y_pred,
+                average="macro",
+                zero_division=0
+            ),
+            "F1_Macro": f1_score(
+                y_true,
+                y_pred,
+                average="macro",
+                zero_division=0
+            )
+        })
+    pd.DataFrame(results).to_csv('logit_regression_all_n_backs_welch.csv')
+
+
 def best_logistic_regression_model():
 
     df = pd.read_csv('n_back_theta_welch_relative_summary.csv')
@@ -296,7 +406,7 @@ def best_logistic_regression_model():
     plt.title("ROC Curve: 1-back vs 4-back")
     plt.legend()
     plt.grid(True)
-    plt.show()
+    #plt.savefig('n_back_roc_auc_curve.svg', dpi=600, format='svg', transparent=True)
 
     # Train the final model on all the samples (no test portion)
     final_model = LogisticRegression()
@@ -306,4 +416,5 @@ def best_logistic_regression_model():
     #joblib.dump(final_model, "best_frontal_theta_logistic_model.joblib")
 
     return auc
+
 best_logistic_regression_model()

@@ -551,3 +551,79 @@ def summarize_relative_theta_power():
     )
 
     return relative_stats
+
+
+def get_baseline(baseline_array, frontal_channels, freq_bands):
+    '''
+    Get a baseline theta power for all the frontal electrodes
+    '''
+    # Filter
+    baseline_array_filtered = baseline_array.copy()
+
+    baseline_array_filtered.notch_filter(
+        np.arange(50, baseline_array_filtered.info["sfreq"] / 2, 50))
+
+    baseline_array_filtered.filter(l_freq=0.5, h_freq=30)
+
+    # Create 2-second fixed-length epochs
+    events = mne.make_fixed_length_events(
+        baseline_array_filtered,
+        duration=2.0
+    )
+
+    epochs = mne.Epochs(baseline_array_filtered,events=events,
+        tmin=0.0,
+        tmax=2.0 - 1 / baseline_array_filtered.info["sfreq"],
+        preload=True
+    )
+
+    # Initialise the theta powers dict
+    channel_power = {
+        channel: []
+        for channel in frontal_channels
+    }
+
+    # Calculate theta power for each epoch
+    for epoch in epochs:
+
+        spectrum = epoch.compute_psd(
+            method="welch",
+            fmin=0.5,
+            fmax=30
+        )
+
+        psd_data, freqs = spectrum.get_data(
+            picks=frontal_channels,
+            exclude="bads",
+            fmin=freq_bands["theta"][0],
+            fmax=freq_bands["theta"][1],
+            return_freqs=True
+        )
+
+        # Integrate PSD over theta frequencies
+        absolute_bandpower = simpson(
+            psd_data,
+            x=freqs,
+            axis=-1
+        )
+
+        # Store theta power for each electrode
+        for channel, power in zip(
+            frontal_channels,
+            absolute_bandpower):
+            channel_power[channel].append(power)
+
+    #Get theta power mean across all epochs per electrode
+    channel_mean = {channel: np.mean(power_values)
+    for channel, power_values in channel_power.items()}
+
+    return channel_mean
+
+def get_relative_theta_power(raw_array, baseline):
+    theta_powers = get_baseline(raw_array, frontal_channels, freq_bands)
+    relative_theta = {}
+    for electrode, theta_power in theta_powers.items():
+        relative_theta[electrode] = theta_power / baseline[electrode]
+        
+    return relative_theta_power
+
