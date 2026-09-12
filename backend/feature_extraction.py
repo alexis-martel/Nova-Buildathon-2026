@@ -621,6 +621,6 @@ def get_relative_theta_power(raw_array, baseline, frontal_channels, freq_bands):
 def predict_cw(relative_theta_power):
     loaded_model = joblib.load(Path('unicorn_Fz_logit_model.joblib'))
 
-    prediction = loaded_model.predict(relative_theta_power)
+    prediction = loaded_model.predict(relative_theta_power.reshape(1,-1))
 
     return prediction
