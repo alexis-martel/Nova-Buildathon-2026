@@ -552,7 +552,6 @@ def summarize_relative_theta_power():
 
     return relative_stats
 
-
 def get_baseline(baseline_array, frontal_channels, freq_bands):
     '''
     Get a baseline theta power for all the frontal electrodes.
@@ -573,51 +572,35 @@ def get_baseline(baseline_array, frontal_channels, freq_bands):
         duration=2.0
     )
 
-    epochs = mne.Epochs(baseline_array_filtered,events=events, baseline=None,
+    epochs = mne.Epochs(baseline_array_filtered, events=events, baseline=None,
         tmin=0.0,
         tmax=2.0 - 1 / baseline_array_filtered.info["sfreq"],
         preload=True
     )
 
-    # Initialise the theta powers dict
-    channel_power = {
-        channel: []
-        for channel in frontal_channels
+    # Compute PSD for ALL epochs at once (n_epochs, n_channels, n_freqs)
+    spectrum = epochs.compute_psd(
+        method="welch",
+        fmin=0.5,
+        fmax=30
+    )
+
+    psd_data, freqs = spectrum.get_data(
+        picks=frontal_channels,
+        exclude="bads",
+        fmin=freq_bands["theta"][0],
+        fmax=freq_bands["theta"][1],
+        return_freqs=True
+    )  # psd_data shape: (n_epochs, n_channels, n_freqs)
+
+    # Integrate PSD over theta frequencies -> (n_epochs, n_channels)
+    absolute_bandpower = simpson(psd_data, x=freqs, axis=-1)
+
+    # Mean theta power across epochs, per electrode
+    channel_mean = {
+        channel: np.mean(absolute_bandpower[:, i])
+        for i, channel in enumerate(frontal_channels)
     }
-
-    # Calculate theta power for each epoch
-    for epoch in epochs:
-
-        spectrum = epoch.compute_psd(
-            method="welch",
-            fmin=0.5,
-            fmax=30
-        )
-
-        psd_data, freqs = spectrum.get_data(
-            picks=frontal_channels,
-            exclude="bads",
-            fmin=freq_bands["theta"][0],
-            fmax=freq_bands["theta"][1],
-            return_freqs=True
-        )
-
-        # Integrate PSD over theta frequencies
-        absolute_bandpower = simpson(
-            psd_data,
-            x=freqs,
-            axis=-1
-        )
-
-        # Store theta power for each electrode
-        for channel, power in zip(
-            frontal_channels,
-            absolute_bandpower):
-            channel_power[channel].append(power)
-
-    #Get theta power mean across all epochs per electrode
-    channel_mean = {channel: np.mean(power_values)
-    for channel, power_values in channel_power.items()}
 
     return channel_mean
 
