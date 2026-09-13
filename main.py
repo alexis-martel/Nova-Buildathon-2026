@@ -31,7 +31,7 @@ def run_nback(
         percent_nback: Rough percentage of items in the n-back sequence that will be positive hits
     Returns: (accuracy, effort_score)
     """
-    recorder = EEGRecorder(stream_name="EE511-010010-200563_on_DESKTOP-ET4GTF5")
+    recorder = EEGRecorder(stream_name="MockEEG")
     seq = nback.generate_n_back_seq(n, assets, length, num_items, percent_nback)
     recorder.start_collection()
     pat_picks = nback_ui.start_n_back_ui(seq, interval, f"N-Back Test (N = {n})")
