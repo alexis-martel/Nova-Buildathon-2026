@@ -7,7 +7,7 @@ def generate_n_back_seq(
     assets: list[Path],
     length: int,
     num_items: int | None = None,
-    percent_nback: float = 90,
+    percent_nback: float = 40,
 ) -> list[Path]:
     """Generate a `n`-Back test of `num_items` in `assets`. If `num_items` is `None`, all items of `assets`  will be used.  The test sequence will be `length` questions long. A positive n-back will be enforced randomly on `percent_nback`% of items."""
     seq = []
@@ -19,10 +19,10 @@ def generate_n_back_seq(
         seq.append(random.choice(assets))
     # Explicitly ensure a few n-back positives
     percent_nback /= 100
-    choose_n = int(len(assets) * percent_nback)
+    choose_n = int(len(seq) * percent_nback)
     for i in range(choose_n):
-        i = random.randint(0, len(assets) - n - 1)
-        assets[i + n] = assets[i]
+        i = random.randint(0, len(seq) - n - 1)
+        seq[i + n] = seq[i]
     return seq
 
 
