@@ -88,8 +88,7 @@ def crop_data(data, start_annotation, stop_annotation, include_stop=True, eps=1e
     return cropped_data
 
 
-def create_nback_epochs(
-    raw, condition, drop_desc="dropped_sample", include_stop=True, concat=Fals):
+def create_nback_epochs(raw, condition, drop_desc="dropped_sample", include_stop=True, concat=False):
     '''
     Create epochs for every n_back condition 
     '''
