@@ -1,4 +1,6 @@
-# Extracting spectral features from the filtered EEG data
+'''
+Extract spectral features from eeg data
+'''
 import mne
 from pathlib import Path
 import pandas as pd
@@ -15,6 +17,9 @@ frontal_channels = ["F3", "F4", "F7", "F8", "Fz"]
 
 
 def load_nback_data(file_path):
+    '''
+    Load N-back data from dataset
+    '''
     n_back_data = mne.io.read_raw_brainvision(file_path, preload=True)
     montage = mne.channels.make_standard_montage("standard_1020")
     n_back_data.drop_channels(["D2", "D3", "D4", "D5"])  # These are misc
@@ -29,6 +34,9 @@ def load_nback_data(file_path):
 
 
 def attach_annotations_from_tsv(raw, tsv_file_path):
+    '''
+    Attach annotations to the raw.
+    '''
     # Attach the annotations from the events.tsv to the raw (Needed for cropping and epoching)
     events_df = pd.read_csv(tsv_file_path, sep="\t")
     onsets = (
@@ -50,6 +58,9 @@ def attach_annotations_from_tsv(raw, tsv_file_path):
 
 
 def crop_data(data, start_annotation, stop_annotation, include_stop=True, eps=1e-6):
+    '''
+    Crop data to start and end marker
+    '''
     ann = data.annotations
     onsets = np.array(ann.onset)
     durations = np.array(ann.duration)
@@ -78,8 +89,10 @@ def crop_data(data, start_annotation, stop_annotation, include_stop=True, eps=1e
 
 
 def create_nback_epochs(
-    raw, condition, drop_desc="dropped_sample", include_stop=True, concat=False
-):
+    raw, condition, drop_desc="dropped_sample", include_stop=True, concat=Fals):
+    '''
+    Create 
+    '''
     # Extract epochs of data between consecutive boundary annotations of a given condition
     # while excluding any segments that overlap with "dropped_samples
     ann = raw.annotations
