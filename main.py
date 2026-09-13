@@ -29,7 +29,7 @@ def run_nback(
         percent_nback: Rough percentage of items in the n-back sequence that will be positive hits
     Returns: (accuracy, effort_score)
     """
-    recorder = EEGRecorder(stream_name="MockEEG")
+    recorder = EEGRecorder(stream_name="EE511-010010-200563_on_DESKTOP-ET4GTF5")
     seq = nback.generate_n_back_seq(n, assets, length, num_items, percent_nback)
     recorder.start_collection()
     pat_picks = nback_ui.start_n_back_ui(seq, interval, f"N-Back Test (N = {n})")
@@ -50,13 +50,13 @@ def test_loop():
     running = True
     n = 1
     # Initial test (baseline n=1)
-    acc_score, baseline_eeg = run_nback(n, NBACK_ITEMS, 20, .1)
+    acc_score, baseline_eeg = run_nback(n, NBACK_ITEMS, 10, 1)
     scores.append({"accuracy": acc_score, "high_effort": None})
     baseline=feature_extraction.get_baseline(baseline_eeg, frontal_channels =["Fz"], freq_bands={'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]})
     # Game loop
     n = 2
     for i in range(5):
-        acc_score, eeg_data = run_nback(n, NBACK_ITEMS, 20, .1)
+        acc_score, eeg_data = run_nback(n, NBACK_ITEMS, 10, 1)
         high_effort = compute(eeg_data, baseline)
         scores.append({"accuracy": acc_score, "high_effort": high_effort})
         print(bold(f"Patient test score: {acc_score}\tHigher effort than baseline: {high_effort}"))

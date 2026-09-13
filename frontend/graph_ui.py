@@ -20,6 +20,7 @@ def show_graph_window(scores: list[dict]):
     buf = io.BytesIO()
     fig.savefig(buf, format="png")
     root = tk.Tk()
+    root.title("Results")
     img = tk.PhotoImage(data=buf.getvalue(), master=root)
     tk.Label(root, image=img).pack()
     root.mainloop()
