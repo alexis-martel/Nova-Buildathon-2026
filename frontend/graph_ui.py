@@ -5,6 +5,7 @@ from matplotlib.ticker import MaxNLocator
 
 
 def _make_accuracy_figure(scores: list[dict]) -> plt.Figure:
+    """Returns a Figure plotting the scores for each test in the assessment sequence"""
     entries = scores[1:]
     x = range(1, len(entries) + 1)
     y = [e["accuracy"] for e in entries]
@@ -16,6 +17,7 @@ def _make_accuracy_figure(scores: list[dict]) -> plt.Figure:
     return fig
 
 def show_graph_window(scores: list[dict]):
+    """Shows a window to display a Figure"""
     fig = _make_accuracy_figure(scores) 
     buf = io.BytesIO()
     fig.savefig(buf, format="png")

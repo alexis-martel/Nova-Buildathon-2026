@@ -1,6 +1,5 @@
 from frontend import markdown_to_tk
 import tkinter as tk
-from tkinter import font as tkfont
 
 
 WELCOME_MARKDOWN = """# New Evaluation

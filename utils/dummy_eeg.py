@@ -1,16 +1,3 @@
-"""
-mock_eeg_outlet.py
-
-Stand-in for the ANT Neuro amplifier while you don't have the hardware yet.
-Publishes a plain LSL EEG outlet with the same 'type' (and a realistic
-channel layout) that eeg_lsl_recorder.EEGRecorder expects, so you can
-develop and test the recorder end-to-end without any device attached.
-
-Typical use: run this in its own terminal/process (or a background thread
-of a test script) and point EEGRecorder at it -- to EEGRecorder it looks
-identical to a real amplifier's LSL export.
-"""
-
 import time
 import threading
 from typing import Optional, List

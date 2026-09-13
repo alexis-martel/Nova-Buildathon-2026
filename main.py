@@ -7,7 +7,9 @@ from frontend import nback, nback_ui, welcome_ui, graph_ui
 ITEM_DIR = Path("frontend/assets")
 NBACK_ITEMS = list(ITEM_DIR.iterdir())
 
+
 def bold(string):
+    """Make bold for terminal output"""
     return f"\033[1m{string}\033[0m"
 
 
@@ -39,6 +41,7 @@ def run_nback(
     return (accuracy_score, eeg_data)
 
 def compute(data, baseline):
+    """Wrapper for feature extraction & model"""
     rel_theta_power = feature_extraction.get_relative_theta_power(data, baseline, frontal_channels =["Fz"], freq_bands={'delta': [0.5, 4], 'theta': [4, 8], 'alpha': [8, 12], 'beta': [12, 30]})
     feature_extraction.predict_cw(rel_theta_power)
     return True
