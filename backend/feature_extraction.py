@@ -91,7 +91,7 @@ def crop_data(data, start_annotation, stop_annotation, include_stop=True, eps=1e
 def create_nback_epochs(
     raw, condition, drop_desc="dropped_sample", include_stop=True, concat=Fals):
     '''
-    Create 
+    Create epochs for every n_back condition 
     '''
     # Extract epochs of data between consecutive boundary annotations of a given condition
     # while excluding any segments that overlap with "dropped_samples
@@ -181,6 +181,9 @@ def create_nback_epochs(
 
 
 def create_all_epochs(raw, drop_desc="dropped_sample", include_stop=True, concat=False):
+    '''
+    Create all epochs for every n_back condition
+    '''
     conditions = ["1-back", "2-back", "3-back", "4-back"]
     epochs = {}
     boundaries = {}
@@ -192,57 +195,13 @@ def create_all_epochs(raw, drop_desc="dropped_sample", include_stop=True, concat
     return epochs, boundaries
 
 
-def compute_theta_power_test(n_back_epochs):
-    theta_power = {}
-    for condition, epoch_list in n_back_epochs.items():
-        if not epoch_list:
-            theta_power[condition] = np.nan
-            continue
-        F3_list = []
-        F4_list = []
-        F7_list = []
-        F8_list = []
-        Fz_list = []
-        for epoch in epoch_list:
-            # Compute the power spectral density (PSD) for each epoch
-            spectrum = epoch.compute_psd(fmin=0.5, fmax=30)
-            psd_data, freqs = spectrum.get_data(
-                picks=frontal_channels,
-                exclude="bads",
-                fmin=freq_bands["theta"][0],
-                fmax=freq_bands["theta"][1],
-                return_freqs=True,
-            )
-
-            # Average the PSDs across epochs and channels
-            freq_res = freqs[1] - freqs[0]
-            absolute_bandpower = simpson(psd_data, dx=freq_res, axis=-1)
-            # Integrate the PSD over the theta band to get total power
-            F3_list.append(absolute_bandpower[0])
-            F4_list.append(absolute_bandpower[1])
-            F7_list.append(absolute_bandpower[2])
-            F8_list.append(absolute_bandpower[3])
-            Fz_list.append(absolute_bandpower[4])
-
-        F3_mean = np.mean(F3_list)
-        F4_mean = np.mean(F4_list)
-        F7_mean = np.mean(F7_list)
-        F8_mean = np.mean(F8_list)
-        Fz_mean = np.mean(Fz_list)
-        theta_power[condition] = {
-            "F3": F3_mean,
-            "F4": F4_mean,
-            "F7": F7_mean,
-            "F8": F8_mean,
-            "Fz": Fz_mean,
-        }
-
-    return theta_power
-
 
 def compute_theta_power_improved(
     n_back_epochs, frontal_channels=frontal_channels, freq_bands=freq_bands
 ):
+    '''
+    Compute theta power for every epoch, condition, and electrode
+    '''
     # Compute theta power for every epoch and store them
     # as n_back condition -> electrode -> list of powers for every epoch
     theta_power = {}
@@ -284,6 +243,9 @@ def compute_theta_power_improved(
 
 
 def combine_theta_power(theta_power_dicts):
+    '''
+    combine theta powers into a dataframe for easier analysis
+    '''
     # Combine theta power dictionaries into a long-form DataFrame.
     # Each row corresponds to one sample, condition, electrode, and epoch.
 
@@ -308,61 +270,10 @@ def combine_theta_power(theta_power_dicts):
 
     return df
 
-
-def n_back_data_test():
-    n_back_data = load_nback_data(
-        Path("dataset/n_back_dataset/sub-001/eeg/sub-001_task-nback_eeg.vhdr")
-    )
-    eeg_picks = mne.pick_types(
-        n_back_data.info, eeg=True, meg=False, stim=False, eog=False
-    )  # only pick eeg channels
-
-    # Preprocess data
-    # Filter
-    n_back_filtered = n_back_data.copy().notch_filter(
-        np.arange(50, n_back_data.info["sfreq"] / 2, 50)
-    )
-    n_back_filtered.filter(l_freq=0.5, h_freq=40)
-
-    # Combine or choose which candidates to exclude (inspect them)
-    # Load the events and attach them as annotations to the raw data
-    attach_annotations_from_tsv(
-        n_back_filtered,
-        Path("dataset/n_back_dataset/sub-001/eeg/sub-001_task-nback_events.tsv"),
-    )
-
-    # Crop the data based on the start and end events
-    n_back_data_cropped = crop_data(
-        n_back_filtered,
-        start_annotation="started_n_back",
-        stop_annotation="finished_n_back",
-    )
-
-    # Get epoch of data between n-back annotations:
-    n_back_epochs, n_back_boundaries = create_all_epochs(
-        n_back_data_cropped,
-        drop_desc="dropped_samples",
-        include_stop=True,
-        concat=False,
-    )
-    theta_power = compute_theta_power_improved(n_back_epochs)
-    df = combine_theta_power([theta_power])
-    sns.scatterplot(
-        data=df,
-        x="Condition",
-        y="Mean_Theta_Power",
-        hue="Electrode",
-        style="Electrode",
-        s=100,
-    )
-    plt.xlabel("Condition")
-    plt.ylabel("Mean Theta Power")
-    plt.title("Theta Power by Condition")
-    plt.show()
-    input("Press Enter to close the plot and exit the script...")
-
-
 def n_back_get_all_theta_powers():
+    '''
+    Filter, Epoch, and compute theta power for ever sample
+    '''
     n_back_paths = pd.read_csv(Path("../dataset/n_back_dataset/n_back_data_paths.csv"))
 
     theta_power_list = []
@@ -406,144 +317,6 @@ def n_back_get_all_theta_powers():
 
     df = combine_theta_power(theta_power_list)
     df.to_csv(Path("../n_back_theta_power_multitaper.csv", index=False))
-
-
-def summarize_theta_power():
-    """
-    Calculate mean, median, and 75th percentile of theta power
-    across epochs for each Sample, Condition, and Electrode.
-
-    Also calculates the mean across electrodes for each of the
-    three summary statistics.
-
-    """
-    df = pd.read_csv(r"n_back_theta_power_multitaper.csv")
-    # Calculate statistics across epochs for each electrode
-    electrode_stats = (
-        df.groupby(["Sample", "Condition", "Electrode"])["Theta_Power"]
-        .agg(Mean="mean", Median="median", Q75=lambda x: x.quantile(0.75))
-        .reset_index()
-    )
-
-    # Convert electrodes into columns
-    electrode_stats = electrode_stats.pivot(
-        index=["Sample", "Condition"],
-        columns="Electrode",
-        values=["Mean", "Median", "Q75"],
-    )
-
-    # Flatten column names
-    electrode_stats.columns = [
-        f"{electrode}_{stat}" for stat, electrode in electrode_stats.columns
-    ]
-
-    electrode_stats = electrode_stats.reset_index()
-
-    # Find electrodes present in the data
-    electrodes = df["Electrode"].unique()
-
-    # Calculate mean across electrodes for each statistic
-    for stat in ["Mean", "Median", "Q75"]:
-        electrode_columns = [
-            f"{electrode}_{stat}"
-            for electrode in electrodes
-            if f"{electrode}_{stat}" in electrode_stats.columns
-        ]
-
-        electrode_stats[f"Frontal_{stat}"] = electrode_stats[electrode_columns].mean(
-            axis=1
-        )
-    electrode_stats.to_csv(r"n_back_theta_multitaper_summary.csv")
-
-    """
-    Calculate mean theta power across epochs for each
-    Sample, Condition, and Electrode.
-
-    Then calculate theta power relative to the 1-back
-    baseline for the same Sample and Electrode.
-
-    Also calculates the mean relative theta power across
-    electrodes.
-    """
-
-    df = pd.read_csv(r"n_back_theta_powers_welch.csv")
-
-    # --------------------------------------------------
-    # 1. Calculate mean theta power across epochs
-    # --------------------------------------------------
-
-    electrode_stats = (
-        df.groupby(["Sample", "Condition", "Electrode"])["Theta_Power"]
-        .mean()
-        .reset_index()
-    )
-
-    electrode_stats = electrode_stats.rename(
-        columns={"Theta_Power": "Theta_Power_Mean"}
-    )
-
-    # --------------------------------------------------
-    # 2. Extract 1-back baseline for each Sample/Electrode
-    # --------------------------------------------------
-
-    baseline = electrode_stats[electrode_stats["Condition"] == "1-back"][
-        ["Sample", "Electrode", "Theta_Power_Mean"]
-    ].rename(columns={"Theta_Power_Mean": "Baseline_1back"})
-
-    # --------------------------------------------------
-    # 3. Add baseline to each condition
-    # --------------------------------------------------
-
-    electrode_stats = electrode_stats.merge(
-        baseline, on=["Sample", "Electrode"], how="left"
-    )
-
-    # --------------------------------------------------
-    # 4. Calculate relative theta power
-    # --------------------------------------------------
-
-    electrode_stats["Relative_Theta_Power"] = (
-        electrode_stats["Theta_Power_Mean"] / electrode_stats["Baseline_1back"]
-    )
-
-    # --------------------------------------------------
-    # 5. Convert electrodes into columns
-    # --------------------------------------------------
-
-    relative_stats = electrode_stats.pivot(
-        index=["Sample", "Condition"],
-        columns="Electrode",
-        values="Relative_Theta_Power",
-    )
-
-    # Flatten column names
-    relative_stats.columns = [
-        f"{electrode}_Relative" for electrode in relative_stats.columns
-    ]
-
-    relative_stats = relative_stats.reset_index()
-
-    # --------------------------------------------------
-    # 6. Calculate mean across electrodes
-    # --------------------------------------------------
-
-    electrodes = df["Electrode"].unique()
-
-    electrode_columns = [
-        f"{electrode}_Mean_Relative"
-        for electrode in electrodes
-        if f"{electrode}_Mean_Relative" in relative_stats.columns
-    ]
-
-    relative_stats["Frontal_Mean_Relative"] = relative_stats[electrode_columns].mean(
-        axis=1
-    )
-
-    # --------------------------------------------------
-    # 7. Save
-    # --------------------------------------------------
-
-    relative_stats.to_csv(r"n_back_theta_welch_relative_summary.csv", index=False)
 
 
 def summarize_relative_theta_power():
@@ -673,6 +446,9 @@ def get_relative_theta_power(raw_array, baseline, frontal_channels, freq_bands):
 
 
 def predict_cw(relative_theta_power):
+    '''
+    Fit the logistic regression model to our feature
+    '''
     loaded_model = joblib.load(Path("unicorn_Fz_logit_model.joblib"))
 
     theta_power_array = [[relative_theta_power["Fz"]]]
