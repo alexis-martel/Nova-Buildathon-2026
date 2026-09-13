@@ -16,9 +16,10 @@ def _make_accuracy_figure(scores: list[dict]) -> plt.Figure:
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     return fig
 
+
 def show_graph_window(scores: list[dict]):
     """Shows a window to display a Figure"""
-    fig = _make_accuracy_figure(scores) 
+    fig = _make_accuracy_figure(scores)
     buf = io.BytesIO()
     fig.savefig(buf, format="png")
     root = tk.Tk()

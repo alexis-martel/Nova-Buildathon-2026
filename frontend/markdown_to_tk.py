@@ -4,7 +4,9 @@ import tkinter as tk
 INLINE_PATTERN = re.compile(r"(\*\*.+?\*\*|\*.+?\*)")
 
 
-def configure_markdown_tags(text_widget: tk.Text, base_family: str = "Helvetica") -> None:
+def configure_markdown_tags(
+    text_widget: tk.Text, base_family: str = "Helvetica"
+) -> None:
     """Set up the tags insert_markdown() relies on. Call once per widget."""
     text_widget.tag_configure(
         "h1", font=(base_family, 20, "bold"), spacing1=4, spacing3=14
@@ -12,9 +14,7 @@ def configure_markdown_tags(text_widget: tk.Text, base_family: str = "Helvetica"
     text_widget.tag_configure(
         "h2", font=(base_family, 15, "bold"), spacing1=12, spacing3=8
     )
-    text_widget.tag_configure(
-        "body", font=(base_family, 11), spacing3=10
-    )
+    text_widget.tag_configure("body", font=(base_family, 11), spacing3=10)
     # bold/italic are combined with h1/h2/body via multiple tags on the
     # same range, so they only need to toggle the weight/slant, not the
     # base size -- Tk applies the last-configured tag's font wholesale, so
@@ -60,4 +60,3 @@ def insert_markdown(text_widget: tk.Text, markdown: str) -> None:
         text_widget.insert("end", "\n")
 
     text_widget.config(state="disabled")
-

@@ -10,10 +10,38 @@ import pylsl
 # extraction has something realistic to pull from. Sliced/extended
 # automatically if you ask for a different channel count.
 DEFAULT_32CH = [
-    "Fp1", "Fp2", "AF3", "AF4", "F7", "F3", "Fz", "F4", "F8",
-    "FC5", "FC1", "FC2", "FC6", "T7", "C3", "Cz", "C4", "T8",
-    "CP5", "CP1", "CP2", "CP6", "P7", "P3", "Pz", "P4", "P8",
-    "POz", "O1", "O2", "AF7", "AF8",
+    "Fp1",
+    "Fp2",
+    "AF3",
+    "AF4",
+    "F7",
+    "F3",
+    "Fz",
+    "F4",
+    "F8",
+    "FC5",
+    "FC1",
+    "FC2",
+    "FC6",
+    "T7",
+    "C3",
+    "Cz",
+    "C4",
+    "T8",
+    "CP5",
+    "CP1",
+    "CP2",
+    "CP6",
+    "P7",
+    "P3",
+    "Pz",
+    "P4",
+    "P8",
+    "POz",
+    "O1",
+    "O2",
+    "AF7",
+    "AF8",
 ]
 
 
@@ -24,7 +52,9 @@ def _resolve_channel_names(n_channels: int, ch_names: Optional[List[str]]) -> Li
         return list(ch_names)
     if n_channels <= len(DEFAULT_32CH):
         return DEFAULT_32CH[:n_channels]
-    return DEFAULT_32CH + [f"EEG{i + 1:03d}" for i in range(len(DEFAULT_32CH), n_channels)]
+    return DEFAULT_32CH + [
+        f"EEG{i + 1:03d}" for i in range(len(DEFAULT_32CH), n_channels)
+    ]
 
 
 def run_mock_eeg_outlet(
@@ -94,7 +124,9 @@ def run_mock_eeg_outlet(
 
             t = (n_pushed + np.arange(chunk_size)) / sfreq
             chunk = np.random.normal(0.0, amplitude_uv, size=(chunk_size, n_channels))
-            chunk[:, 0] += amplitude_uv * 0.5 * np.sin(2 * np.pi * 10.0 * t)  # 10 Hz "signal" on ch 0
+            chunk[:, 0] += (
+                amplitude_uv * 0.5 * np.sin(2 * np.pi * 10.0 * t)
+            )  # 10 Hz "signal" on ch 0
 
             outlet.push_chunk(chunk.astype(np.float32).tolist())
             n_pushed += chunk_size

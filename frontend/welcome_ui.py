@@ -16,15 +16,24 @@ The N-Back test shows a **sequence** of images, each staying on-screen for a sho
 
 Press the *Start Evaluation* button below when you're ready."""
 
+
 def show_welcome_ui(on_click):
     """Shows a welcome window from where to launch the `on_click` function"""
     root = tk.Tk()
     root.title("NeuroEval")
     root.geometry("500x550")
-    text = tk.Text(root, wrap="word", borderwidth=0, highlightthickness=0, bg=root.cget("bg"), selectbackground=root.cget("bg"))
+    text = tk.Text(
+        root,
+        wrap="word",
+        borderwidth=0,
+        highlightthickness=0,
+        bg=root.cget("bg"),
+        selectbackground=root.cget("bg"),
+    )
     markdown_to_tk.configure_markdown_tags(text)
     markdown_to_tk.insert_markdown(text, WELCOME_MARKDOWN)
-    tk.Button(root, text="Start Evaluation", command=lambda: (root.destroy(), on_click())).pack(side=tk.BOTTOM, pady=20)
+    tk.Button(
+        root, text="Start Evaluation", command=lambda: (root.destroy(), on_click())
+    ).pack(side=tk.BOTTOM, pady=20)
     text.pack(fill="both", expand=True, padx=20, pady=20)
     root.mainloop()
-

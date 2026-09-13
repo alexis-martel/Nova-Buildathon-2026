@@ -58,5 +58,6 @@ def compute_score(
     except ZeroDivisionError:
         if len(list(set(positive_picks))) == 0:
             score = 1.0
-        else: score = 0.0
+        else:
+            score = 0.0
     return score

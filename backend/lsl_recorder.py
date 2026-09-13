@@ -82,8 +82,10 @@ class EEGRecorder:
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
 
-        self._chunks: List[np.ndarray] = []        # each: (n_samples, n_channels), raw units
-        self._timestamps: List[np.ndarray] = []     # LSL clock-corrected timestamps per chunk
+        self._chunks: List[np.ndarray] = []  # each: (n_samples, n_channels), raw units
+        self._timestamps: List[
+            np.ndarray
+        ] = []  # LSL clock-corrected timestamps per chunk
 
         self.sfreq: Optional[float] = None
         self.ch_names: List[str] = []
@@ -108,9 +110,13 @@ class EEGRecorder:
             raise RuntimeError("start_collection() called while already recording.")
 
         if self.stream_name:
-            streams = pylsl.resolve_byprop("name", self.stream_name, timeout=self.resolve_timeout)
+            streams = pylsl.resolve_byprop(
+                "name", self.stream_name, timeout=self.resolve_timeout
+            )
         else:
-            streams = pylsl.resolve_byprop("type", self.stream_type, timeout=self.resolve_timeout)
+            streams = pylsl.resolve_byprop(
+                "type", self.stream_type, timeout=self.resolve_timeout
+            )
 
         if not streams:
             raise RuntimeError(
@@ -178,7 +184,9 @@ class EEGRecorder:
 
         # One last non-blocking drain so the final fraction of a second
         # sitting in LSL's internal buffer isn't lost.
-        chunk, timestamps = self._inlet.pull_chunk(timeout=0.0, max_samples=self.max_samples_per_pull)
+        chunk, timestamps = self._inlet.pull_chunk(
+            timeout=0.0, max_samples=self.max_samples_per_pull
+        )
         if timestamps:
             with self._lock:
                 self._chunks.append(np.asarray(chunk, dtype=np.float64))
@@ -201,15 +209,21 @@ class EEGRecorder:
     def _build_raw(self) -> "mne.io.RawArray":
         with self._lock:
             if not self._chunks:
-                raise RuntimeError("No samples were collected -- check the LSL connection.")
-            data = np.concatenate(self._chunks, axis=0)            # (n_samples, n_channels)
+                raise RuntimeError(
+                    "No samples were collected -- check the LSL connection."
+                )
+            data = np.concatenate(self._chunks, axis=0)  # (n_samples, n_channels)
             timestamps = np.concatenate(self._timestamps, axis=0)  # (n_samples,)
 
         self.first_sample_lsl_time = float(timestamps[0])
 
-        data = (data * self.scale_to_volts).T  # -> (n_channels, n_samples), volts, MNE layout
+        data = (
+            data * self.scale_to_volts
+        ).T  # -> (n_channels, n_samples), volts, MNE layout
 
-        mne_info = mne.create_info(ch_names=self.ch_names, sfreq=self.sfreq, ch_types="eeg")
+        mne_info = mne.create_info(
+            ch_names=self.ch_names, sfreq=self.sfreq, ch_types="eeg"
+        )
         raw = mne.io.RawArray(data, mne_info, verbose=False)
         return raw
 
